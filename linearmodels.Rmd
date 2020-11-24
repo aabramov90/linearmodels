@@ -11,6 +11,7 @@ output:
 
 ```{r, setup}
 library(tidyverse)
+library(p8105.datasets)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -32,3 +33,73 @@ scale_fill_discrete = scale_fill_viridis_d
 ```
 
 # Loading the data.
+
+```{r}
+data("nyc_airbnb")
+
+nyc_airbnb =
+  nyc_airbnb %>% 
+    mutate(
+      stars = review_scores_location/ 2) %>% 
+  rename(
+      borough = neighbourhood_group,
+      neighborhood = (neighbourhood)) %>% 
+  filter(borough != "Staten Island") %>% 
+  select(price, stars, borough, neighborhood, room_type)
+```
+
+# Fit a Model
+
+```{r}
+nyc_airbnb %>%  
+  ggplot(aes(x = stars, y = price, color = borough)) +
+  geom_point()
+```
+
+```{r}
+airbnbn_price_fit = lm(price ~ stars + borough, data = nyc_airbnb)
+summary(airbnbn_price_fit)
+```
+
+Better way to do it?
+```{r}
+broom::glance(airbnbn_price_fit)
+```
+
+Another good way
+```{r}
+broom::tidy(airbnbn_price_fit) %>% 
+  select(-std.error, -statistic) %>% 
+  mutate(
+    term = str_replace(term, "borough", "Borough = ")) %>% 
+      knitr::kable(digits = 3)
+```
+
+## Be in control of factors
+
+Note that the Bronx is the reference group... because it's in alphabetical order... and that's bcause borough is a character.
+
+How do we do it so the most common borough? Instead of alphabetical
+```{r}
+nyc_airbnb = 
+  nyc_airbnb %>% 
+  mutate(
+    borough = fct_infreq(borough),
+    room_type = fct_infreq(room_type)
+    )
+
+```
+
+```{r}
+nyc_airbnb %>%  
+  ggplot(aes(x = stars, y = price, color = borough)) +
+  geom_point()
+```
+
+So now we can see that the reference group is Manhattan, and not the Bronx!  A more plausible group.  
+
+```{r}
+airbnbn_price_fit2 = lm(price ~ stars + borough, data = nyc_airbnb)
+broom::tidy(airbnbn_price_fit2)
+```
+
